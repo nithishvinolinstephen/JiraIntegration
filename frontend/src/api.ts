@@ -2,6 +2,13 @@ import { GenerateRequest, GenerateResponse } from './types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api'
 
+export interface JiraStoryData {
+  storyId: string
+  title: string
+  description: string
+  acceptanceCriteria: string
+}
+
 export async function generateTests(request: GenerateRequest): Promise<GenerateResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/generate-tests`, {
@@ -21,6 +28,29 @@ export async function generateTests(request: GenerateRequest): Promise<GenerateR
     return data
   } catch (error) {
     console.error('Error generating tests:', error)
+    throw error instanceof Error ? error : new Error('Unknown error occurred')
+  }
+}
+
+export async function fetchJiraStory(storyId: string): Promise<JiraStoryData> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/jira/fetch`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ storyId }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+    }
+
+    const data: JiraStoryData = await response.json()
+    return data
+  } catch (error) {
+    console.error('Error fetching JIRA story:', error)
     throw error instanceof Error ? error : new Error('Unknown error occurred')
   }
 }

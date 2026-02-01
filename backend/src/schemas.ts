@@ -19,8 +19,8 @@ export const TestCaseSchema = z.object({
 export const GenerateResponseSchema = z.object({
   cases: z.array(TestCaseSchema),
   model: z.string().optional(),
-  promptTokens: z.number(),
-  completionTokens: z.number()
+  promptTokens: z.number().optional(),
+  completionTokens: z.number().optional()
 })
 
 // Type exports

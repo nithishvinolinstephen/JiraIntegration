@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generateTests } from './api'
+import { generateTests, fetchJiraStory } from './api'
 import { GenerateRequest, GenerateResponse, TestCase } from './types'
 
 function App() {
@@ -9,6 +9,8 @@ function App() {
     description: '',
     additionalInfo: ''
   })
+  const [jiraStoryId, setJiraStoryId] = useState<string>('')
+  const [isLoadingJira, setIsLoadingJira] = useState<boolean>(false)
   const [results, setResults] = useState<GenerateResponse | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,6 +28,30 @@ function App() {
 
   const handleInputChange = (field: keyof GenerateRequest, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleFetchJiraStory = async () => {
+    if (!jiraStoryId.trim()) {
+      setError('Please enter a JIRA story ID')
+      return
+    }
+
+    setIsLoadingJira(true)
+    setError(null)
+    
+    try {
+      const response = await fetchJiraStory(jiraStoryId)
+      setFormData(prev => ({
+        ...prev,
+        storyTitle: response.title,
+        description: response.description,
+        acceptanceCriteria: response.acceptanceCriteria
+      }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch JIRA story')
+    } finally {
+      setIsLoadingJira(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,9 +174,14 @@ function App() {
           min-height: 100px;
         }
         
-        .submit-btn {
-          background: #3498db;
-          color: white;
+        .jira-input-group {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 12px;
+          align-items: flex-end;
+        }
+        
+        .submit-btn, .fetch-btn {
           border: none;
           padding: 12px 24px;
           border-radius: 6px;
@@ -160,11 +191,28 @@ function App() {
           transition: background-color 0.2s;
         }
         
-        .submit-btn:hover:not(:disabled) {
-          background: #2980b9;
+        .submit-btn {
+          background: #27ae60;
+          color: white;
+          width: 100%;
         }
         
-        .submit-btn:disabled {
+        .fetch-btn {
+          background: #27ae60;
+          color: white;
+          padding: 12px 16px;
+          white-space: nowrap;
+        }
+        
+        .submit-btn:hover:not(:disabled) {
+          background: #1e8449;
+        }
+        
+        .fetch-btn:hover:not(:disabled) {
+          background: #229954;
+        }
+        
+        .submit-btn:disabled, .fetch-btn:disabled {
           background: #bdc3c7;
           cursor: not-allowed;
         }
@@ -235,11 +283,11 @@ function App() {
           background: #f8f9fa;
         }
         
-        .category-positive { color: #27ae60; font-weight: 600; }
-        .category-negative { color: #e74c3c; font-weight: 600; }
-        .category-edge { color: #f39c12; font-weight: 600; }
-        .category-authorization { color: #9b59b6; font-weight: 600; }
-        .category-non-functional { color: #34495e; font-weight: 600; }
+        .category-positive { color: #1b5e20; font-weight: 600; }
+        .category-negative { color: #c0392b; font-weight: 600; }
+        .category-edge { color: #2e7d32; font-weight: 600; }
+        .category-authorization { color: #2e7d32; font-weight: 600; }
+        .category-non-functional { color: #2e7d32; font-weight: 600; }
         
         .test-case-id {
           cursor: pointer;
@@ -258,8 +306,8 @@ function App() {
         }
         
         .test-case-id.expanded {
-          background: #e3f2fd;
-          color: #1976d2;
+          background: #eaf6ec;
+          color: #1b5e20;
         }
         
         .expand-icon {
@@ -317,7 +365,7 @@ function App() {
         }
         
         .step-expected {
-          color: #27ae60;
+          color: #1b5e20;
           font-weight: 500;
           font-size: 14px;
         }
@@ -342,6 +390,30 @@ function App() {
         </div>
         
         <form onSubmit={handleSubmit} className="form-container">
+          <div className="form-group">
+            <label htmlFor="jiraStoryId" className="form-label">
+              Jira ID
+            </label>
+            <div className="jira-input-group">
+              <input
+                type="text"
+                id="jiraStoryId"
+                className="form-input"
+                value={jiraStoryId}
+                onChange={(e) => setJiraStoryId(e.target.value)}
+                placeholder="e.g., PROJ-123"
+              />
+              <button
+                type="button"
+                className="fetch-btn"
+                onClick={handleFetchJiraStory}
+                disabled={isLoadingJira}
+              >
+                {isLoadingJira ? 'Fetching...' : 'Enter'}
+              </button>
+            </div>
+          </div>
+
           <div className="form-group">
             <label htmlFor="storyTitle" className="form-label">
               Story Title *
@@ -425,7 +497,7 @@ function App() {
               <div className="results-meta">
                 {results.cases.length} test case(s) generated
                 {results.model && ` • Model: ${results.model}`}
-                {results.promptTokens > 0 && ` • Tokens: ${results.promptTokens + results.completionTokens}`}
+                {(((results.promptTokens ?? 0) + (results.completionTokens ?? 0)) > 0) && ` • Tokens: ${(results.promptTokens ?? 0) + (results.completionTokens ?? 0)}`}
               </div>
             </div>
             

@@ -17,6 +17,6 @@ export interface TestCase {
 export interface GenerateResponse {
   cases: TestCase[]
   model?: string
-  promptTokens: number
-  completionTokens: number
+  promptTokens?: number
+  completionTokens?: number
 }

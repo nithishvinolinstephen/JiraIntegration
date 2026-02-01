@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import path from 'path'
 import { generateRouter } from './routes/generate'
+import { jiraRouter } from './routes/jira'
 
 // Load environment variables from root directory
 const envPath = path.join(__dirname, '../../.env')
@@ -21,8 +22,15 @@ const app = express()
 const PORT = process.env.PORT || 8080
 
 // Middleware
+// Configure CORS to allow origins from env or common local dev ports
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174').split(',').map(s => s.trim())
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like server-to-server or curl)
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(new Error(`CORS origin denied: ${origin}`))
+  },
   credentials: true
 }))
 app.use(express.json({ limit: '10mb' }))
@@ -35,6 +43,7 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/generate-tests', generateRouter)
+app.use('/api/jira', jiraRouter)
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
